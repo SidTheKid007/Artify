@@ -1,14 +1,12 @@
 from flask import Flask, render_template, request, session
 from flask_session import Session
-from PIL import Image
+from PIL import Image, ImageFilter
 from werkzeug.utils import secure_filename
 from flask_socketio import SocketIO
 import os
 import shutil
 import uuid
-from glob import glob
 import cloudinary as Cloud
-import random
 
 
 app = Flask(__name__)
@@ -19,29 +17,30 @@ socketio = SocketIO(app)
 
 images_directory = 'static/images'
 
-Cloud.config.update = ({
-    'cloud_name':os.environ.get('CLOUDINARY_CLOUD_NAME'),
-    'api_key': os.environ.get('CLOUDINARY_API_KEY'),
-    'api_secret': os.environ.get('CLOUDINARY_API_SECRET')
-})
+#Cloud.config.update = ({
+#    'cloud_name':os.environ.get('CLOUDINARY_CLOUD_NAME'),
+#    'api_key': os.environ.get('CLOUDINARY_API_KEY'),
+#    'api_secret': os.environ.get('CLOUDINARY_API_SECRET')
+#})
 
 @app.route('/')
 def loadHome():
     deleteImages()
-    # check session and delete if something there
     return render_template('home-form.html')
 
 
 @app.route('/example')
 def loadExample():
     deleteImages()
-    # check session and delete if something there
-    mainPic = '/static/images/example/bear.JPG'
+    session['example'] = True
+    session['ext'] = 'JPG'
+    mainPic = '/static/images/example/default.JPG'
     return render_template('index.html', mainPic=mainPic)
 
 
 @app.route('/', methods=['POST'])
 def loadIndex():
+    session['example'] = False
     upload = request.files['mainpic']
     filename = upload.filename
     filename = secure_filename(filename)
@@ -51,6 +50,7 @@ def loadIndex():
         saveImage(upload, ext)
     else:
         return render_template('error-page.html')
+    preloadImages()
     mainPic = loadImage('default')
     return render_template('index.html', mainPic=mainPic)
 
@@ -71,18 +71,62 @@ def deleteImages():
     if session.get('imgPath'):
         oldFolder = 'static/images/' + session['imgPath']
         if os.path.isdir(oldFolder):
-            print(oldFolder)
             shutil.rmtree(oldFolder)
     return 'success'
 
 
-def loadImage(type):
-    imageFolder = '/static/images/' + session['imgPath']
-    img = ''
-    if (type == 'default'):
-        img = imageFolder + '/default.' + session['ext']
+def preloadImages():
+    imageFolder = 'static/images/' + session['imgPath']
+    defaultFile = imageFolder + '/default.' + session['ext']
+    default = Image.open(defaultFile)
+    loadSid(default, imageFolder)
+    loadShark(default, imageFolder)
+    loadShawn(default, imageFolder)
+    loadSram(default, imageFolder)
+    # refactor later with name as an argument?
+    return 'success'
+
+
+def loadSid(default, imageFolder):
+    sidPic = default.filter(ImageFilter.MaxFilter(size=5))
+    sidPic.save(imageFolder + '/Sid.' + session['ext'])
+    return 'success'
+
+
+def loadShark(default, imageFolder):
+    sharkPic = default.filter(ImageFilter.EDGE_ENHANCE_MORE)
+    sharkPic.save(imageFolder + '/Shark.' + session['ext'])
+    return 'success'
+
+
+def loadShawn(default, imageFolder):
+    shawnPic = default.filter(ImageFilter.ModeFilter(size=15))
+    shawnPic.save(imageFolder + '/Shawn.' + session['ext'])
+    return 'success'
+
+
+def loadSram(default, imageFolder):
+    sramPic = default.filter(ImageFilter.MinFilter(size=5))
+    sramPic.save(imageFolder + '/Sram.' + session['ext'])
+    return 'success'
+
+
+def loadImage(filter):
+    if session['example']:
+        imageFolder = '/static/images/example'
+    else:
+        imageFolder = '/static/images/' + session['imgPath']
+    img = imageFolder + '/' + filter + '.' + session['ext']
     return img
 
+
+@app.route('/changeImage', methods=['GET', 'POST'])
+def changeImg():
+    filter = request.args['filter']
+    img = loadImage(filter)
+    return img
+
+# wrap everything in try catches later
 
 @socketio.on('disconnect')
 def disconnect_user():

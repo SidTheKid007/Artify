@@ -1,5 +1,8 @@
 <!DOCTYPE html>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
+<script src="{{ url_for('static', filename='js/jquery-3.5.1.min.js') }}"></script>
+
 <html>
 <head lang="en">
     <meta charset="UTF-8">
@@ -25,20 +28,52 @@
             display: block;
             margin-left: auto;
             margin-right: auto;
-            height: 360px;
-            width: 50%;
+            height: 50%;
+            width: auto;
         }
-
+        select {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            width: 10%;
+            font-size: 0.9em;
+            font-family: "Times New Roman", Times, serif;
+        }
 	</style> 
 </head>
 <body>
 <div class="container">
     <div class="row">
         <div class="col-md-6">
-        	<h1> Artify </h1>
+        	<h1> <a href="https://artify-filters.herokuapp.com/">Artify</a></h1>
             <br>
-            <img src="{{mainPic | safe}}" alt="Art" height="auto" id="mainPic">
+            <select class="form-control" id='filter-pick' name="Filters" required>
+                <option value="" selected="selected" disabled="disabled">Filter</option>
+                <option value="default">Default</option>
+                <option value="Shark">Shark</option>
+                <option value="Shawn">Shawn</option>
+                <option value="Sid">Sid</option>
+                <option value="Sram">Sram</option>
+            </select>
+            <br>
+            <img src="{{mainPic | safe}}" alt="Art" id="mainPic">
         </div>
     </div>
+    <script>
+        $('#filter-pick').on('change',function(){
+            $.ajax({
+                url: "/changeImage",
+                type: "GET",
+                contentType: 'application/json;charset=UTF-8',
+                data: {
+                    'filter': document.getElementById('filter-pick').value
+                },
+                success: function (data) {
+                    document.getElementById("mainPic").src = data;
+                }
+            });
+        })
+    </script>
+</div>
 </body>
 </html>

@@ -3,7 +3,7 @@
 <div align="center">
   <img src="https://bloximages.newyork1.vip.townnews.com/journalnow.com/content/tncms/assets/v3/editorial/c/0a/c0a2c001-130f-534c-b567-33bb823e9e17/5d25fa7605bed.image.jpg?resize=1200%2C785" alt="artist" height="400"/>
   <br>
-  <p id="desc" style="font-style:italic;text-align:center;">This project leverages various techniques to transform pictures into the style of famous artists.
+  <p id="desc" style="font-style:italic;text-align:center;">This project leverages various techniques to transform pictures into the styles of famous artists.
   </p>
 </div>
 
@@ -13,7 +13,7 @@
  [Artify Frontend](/templates/) - This directory lays out the frontend files used in this project for input, results, and error.
 
 ## Website
-TBD- This website contains the final result of the project.
+https://artify-filters.herokuapp.com/ - This website contains the final result of the project.
 
 ## Libaries Used
 ### Framework
