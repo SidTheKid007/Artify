@@ -151,11 +151,11 @@ def k_means_image_segmentation(image, K):
         pixelVector[index][1] = int(round(centers[item][1] * 255))
         pixelVector[index][2] = int(round(centers[item][2] * 255))
     
-    image = Image.new("RGB", (width, height))
+    modified_image = Image.new("RGB", (width, height))
     for y in range(height):
         for x in range(width):
-            image.putpixel((x, y), (int(pixelVector[y * width + x][0]), int(pixelVector[y * width + x][1]),	int(pixelVector[y * width + x][2])))
-    return image
+            modified_image.putpixel((x, y), (int(pixelVector[y * width + x][0]), int(pixelVector[y * width + x][1]),	int(pixelVector[y * width + x][2])))
+    return modified_image
           
 def loadShark(default, imageFolder):
     #sharkPic = default.filter(ImageFilter.EDGE_ENHANCE_MORE)
