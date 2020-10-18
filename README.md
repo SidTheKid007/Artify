@@ -24,4 +24,4 @@ https://artify-filters.herokuapp.com/ - This website contains the final result o
 
 ### Image Modification 
 * PIL
-* TBD
+* sklearn
