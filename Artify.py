@@ -44,6 +44,7 @@ def loadExample():
 
 @app.route('/', methods=['POST'])
 def loadIndex():
+    deleteImages()
     session['example'] = False
     upload = request.files['mainpic']
     filename = upload.filename
@@ -81,8 +82,10 @@ def deleteImages():
 
 def preloadImages():
     imageFolder = 'static/images/' + session['imgPath']
+    #imageFolder = 'static/images/example'
     defaultFile = imageFolder + '/default.' + session['ext']
     default = Image.open(defaultFile)
+    default = resize(default, 1000)
     loadSid(default, imageFolder)
     loadShark(default, imageFolder)
     loadShawn(default, imageFolder)
@@ -91,75 +94,34 @@ def preloadImages():
     return 'success'
 
 
+def resize(default, tolerance):
+    width, height = default.size
+    # make biggest side 1000 pixels
+    if (width*height > tolerance*tolerance):
+        newWidth = 0
+        newHeight = 0
+        if (width > height):
+            newWidth = tolerance
+            newHeight = int(height * (newWidth/width))
+        else:
+            newHeight = tolerance
+            newWidth = int(width * (newHeight/height))
+        newsize = (newWidth, newHeight) 
+        default = default.resize(newsize)
+    return default
+
+
 def loadSid(default, imageFolder):
     sidPic = default.filter(ImageFilter.MaxFilter(size=5))
     sidPic.save(imageFolder + '/Sid.' + session['ext'])
     return 'success'
 
-# K is the number of clusters
-def k_means_image_segmentation(image, K):
-    
-    width = image.size[0]
-    height = image.size[1]
-    
-    pixelVector = np.ndarray(shape=(width * height, 5), dtype=float)
-    pixelCluster = np.ndarray(shape=(width * height), dtype=int)
-    
-    for y in range(0, height):
-      for x in range(0, width):
-      	xy = (x, y)
-      	rgb = image.getpixel(xy)
-      	pixelVector[x + y * width, 0] = rgb[0]
-      	pixelVector[x + y * width, 1] = rgb[1]
-      	pixelVector[x + y * width, 2] = rgb[2]
-      	pixelVector[x + y * width, 3] = x
-      	pixelVector[x + y * width, 4] = y
-    
-    pixelVectorNormalized = preprocessing.normalize(pixelVector)
-    minVal = np.amin(pixelVectorNormalized)
-    maxVal = np.amax(pixelVectorNormalized)
-    
-    centers = np.ndarray(shape=(K,5))
-    for index, center in enumerate(centers):
-        centers[index] = np.random.uniform(minVal, maxVal, 5)
-    
-    iterations = 5
-    for iteration in range(iterations):
-        for idx, data in enumerate(pixelVectorNormalized):
-            distanceToCenters = np.ndarray(shape=(K))
-            for index, center in enumerate(centers):
-                distanceToCenters[index] = euclidean_distances(data.reshape(1, -1), center.reshape(1, -1))
-            pixelCluster[idx] = np.argmin(distanceToCenters)
-            
-    	clusterToCheck = np.arange(K)		
-    	clustersEmpty = np.in1d(clusterToCheck, pixelCluster)
-    										
-    for index, item in enumerate(clustersEmpty):
-    		if item == False:
-    			pixelCluster[np.random.randint(len(pixelCluster))] = index
-    
-    for i in range(K):
-        centerData = []
-        for index, item in enumerate(pixelCluster):
-            if item == i:
-                centerData.append(pixelVectorNormalized[index])
-        centerData = np.array(centerData)
-        centers[i] = np.mean(centerData, axis=0)
-    
-    for index, item in enumerate(pixelCluster):
-        pixelVector[index][0] = int(round(centers[item][0] * 255))
-        pixelVector[index][1] = int(round(centers[item][1] * 255))
-        pixelVector[index][2] = int(round(centers[item][2] * 255))
-    
-    modified_image = Image.new("RGB", (width, height))
-    for y in range(height):
-        for x in range(width):
-            modified_image.putpixel((x, y), (int(pixelVector[y * width + x][0]), int(pixelVector[y * width + x][1]),	int(pixelVector[y * width + x][2])))
-    return modified_image
-          
+
 def loadShark(default, imageFolder):
     #sharkPic = default.filter(ImageFilter.EDGE_ENHANCE_MORE)
-    sharkPic = k_means_image_segmentation(default, 5)
+    sharkDefault = resize(default, 30)
+    sharkPic = k_means_image_segmentation(sharkDefault, 4)
+    sharkPic = sharkPic.resize(default.size)
     sharkPic.save(imageFolder + '/Shark.' + session['ext'])
     return 'success'
 
@@ -174,6 +136,57 @@ def loadSram(default, imageFolder):
     sramPic = default.filter(ImageFilter.MinFilter(size=5))
     sramPic.save(imageFolder + '/Sram.' + session['ext'])
     return 'success'
+
+
+# K is the number of clusters
+def k_means_image_segmentation(image, K):
+    width = image.size[0]
+    height = image.size[1]
+    pixelVector = np.ndarray(shape=(width * height, 5), dtype=float)
+    pixelCluster = np.ndarray(shape=(width * height), dtype=int)
+    for y in range(0, height):
+      for x in range(0, width):
+        xy = (x, y)
+        rgb = image.getpixel(xy)
+        pixelVector[x + y * width, 0] = rgb[0]
+        pixelVector[x + y * width, 1] = rgb[1]
+        pixelVector[x + y * width, 2] = rgb[2]
+        pixelVector[x + y * width, 3] = x
+        pixelVector[x + y * width, 4] = y
+    pixelVectorNormalized = preprocessing.normalize(pixelVector)
+    minVal = np.amin(pixelVectorNormalized)
+    maxVal = np.amax(pixelVectorNormalized)
+    centers = np.ndarray(shape=(K,5))
+    for index, center in enumerate(centers):
+        centers[index] = np.random.uniform(minVal, maxVal, 5)
+    iterations = 3
+    for iteration in range(iterations):
+        for idx, data in enumerate(pixelVectorNormalized):
+            distanceToCenters = np.ndarray(shape=(K))
+            for index, center in enumerate(centers):
+                distanceToCenters[index] = euclidean_distances(data.reshape(1, -1), center.reshape(1, -1))
+            pixelCluster[idx] = np.argmin(distanceToCenters)
+        clusterToCheck = np.arange(K)       
+        clustersEmpty = np.in1d(clusterToCheck, pixelCluster)                           
+    for index, item in enumerate(clustersEmpty):
+            if item == False:
+                pixelCluster[np.random.randint(len(pixelCluster))] = index
+    for i in range(K):
+        centerData = []
+        for index, item in enumerate(pixelCluster):
+            if item == i:
+                centerData.append(pixelVectorNormalized[index])
+        centerData = np.array(centerData)
+        centers[i] = np.mean(centerData, axis=0)
+    for index, item in enumerate(pixelCluster):
+        pixelVector[index][0] = int(round(centers[item][0] * 255))
+        pixelVector[index][1] = int(round(centers[item][1] * 255))
+        pixelVector[index][2] = int(round(centers[item][2] * 255))
+    modified_image = Image.new("RGB", (width, height))
+    for y in range(height):
+        for x in range(width):
+            modified_image.putpixel((x, y), (int(pixelVector[y * width + x][0]), int(pixelVector[y * width + x][1]),    int(pixelVector[y * width + x][2])))
+    return modified_image
 
 
 def loadImage(filter):
