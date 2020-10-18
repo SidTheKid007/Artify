@@ -7,6 +7,10 @@ import os
 import shutil
 import uuid
 import cloudinary as Cloud
+from sklearn import preprocessing
+from sklearn.metrics.pairwise import euclidean_distances
+import numpy as np
+import sys
 
 
 app = Flask(__name__)
@@ -92,9 +96,70 @@ def loadSid(default, imageFolder):
     sidPic.save(imageFolder + '/Sid.' + session['ext'])
     return 'success'
 
-
+# K is the number of clusters
+def k_means_image_segmentation(image, K):
+    
+    width = image.size[0]
+    height = image.size[1]
+    
+    pixelVector = np.ndarray(shape=(width * height, 5), dtype=float)
+    pixelCluster = np.ndarray(shape=(width * height), dtype=int)
+    
+    for y in range(0, height):
+      for x in range(0, width):
+      	xy = (x, y)
+      	rgb = image.getpixel(xy)
+      	pixelVector[x + y * width, 0] = rgb[0]
+      	pixelVector[x + y * width, 1] = rgb[1]
+      	pixelVector[x + y * width, 2] = rgb[2]
+      	pixelVector[x + y * width, 3] = x
+      	pixelVector[x + y * width, 4] = y
+    
+    pixelVectorNormalized = preprocessing.normalize(pixelVector)
+    minVal = np.amin(pixelVectorNormalized)
+    maxVal = np.amax(pixelVectorNormalized)
+    
+    centers = np.ndarray(shape=(K,5))
+    for index, center in enumerate(centers):
+        centers[index] = np.random.uniform(minVal, maxVal, 5)
+    
+    iterations = 5
+    for iteration in range(iterations):
+        for idx, data in enumerate(pixelVectorNormalized):
+            distanceToCenters = np.ndarray(shape=(K))
+            for index, center in enumerate(centers):
+                distanceToCenters[index] = euclidean_distances(data.reshape(1, -1), center.reshape(1, -1))
+            pixelCluster[idx] = np.argmin(distanceToCenters)
+            
+    	clusterToCheck = np.arange(K)		
+    	clustersEmpty = np.in1d(clusterToCheck, pixelCluster)
+    										
+    for index, item in enumerate(clustersEmpty):
+    		if item == False:
+    			pixelCluster[np.random.randint(len(pixelCluster))] = index
+    
+    for i in range(K):
+        centerData = []
+        for index, item in enumerate(pixelCluster):
+            if item == i:
+                centerData.append(pixelVectorNormalized[index])
+        centerData = np.array(centerData)
+        centers[i] = np.mean(centerData, axis=0)
+    
+    for index, item in enumerate(pixelCluster):
+        pixelVector[index][0] = int(round(centers[item][0] * 255))
+        pixelVector[index][1] = int(round(centers[item][1] * 255))
+        pixelVector[index][2] = int(round(centers[item][2] * 255))
+    
+    image = Image.new("RGB", (width, height))
+    for y in range(height):
+        for x in range(width):
+            image.putpixel((x, y), (int(pixelVector[y * width + x][0]), int(pixelVector[y * width + x][1]),	int(pixelVector[y * width + x][2])))
+    return image
+          
 def loadShark(default, imageFolder):
-    sharkPic = default.filter(ImageFilter.EDGE_ENHANCE_MORE)
+    #sharkPic = default.filter(ImageFilter.EDGE_ENHANCE_MORE)
+    sharkPic = k_means_image_segmentation(default, 5)
     sharkPic.save(imageFolder + '/Shark.' + session['ext'])
     return 'success'
 
@@ -130,7 +195,7 @@ def changeImg():
 
 @socketio.on('disconnect')
 def disconnect_user():
-    flask.ext.login.logout_user()
+    Flask.ext.login.logout_user()
     deleteImages()
     session.clear()
 
